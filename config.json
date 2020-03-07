@@ -1,0 +1,10 @@
+{
+  "DATABASE": {
+    "dbname":  "articles_collection",
+    "user":  "root",
+    "password": "",
+    "host": "localhost",
+    "port": 3306,
+    "echo": false
+  }
+}
