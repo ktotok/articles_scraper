@@ -244,16 +244,18 @@ async def parse_article(category, session):
         h1 = article.h1
         sections = article.select(".section")
         for sec in sections:
-            h1_name = h1.text[:8]
-            name = h1_name
+            name = h1.text[:8]
+
+            h2_name = ""
+            h3_name = ""
             h2 = sec.find('h2', recursive=False)
+
             if h2:
-                h2_name = f"{h1_name} {h2.text[:8]}"
-                name = h2_name
+                h2_name = h2.text[:8]
+
             h3 = sec.find('h3', recursive=False)
             if h3:
-                h3_name = f"{h2_name} {h3.text[:8]}"
-                name = h3_name
+                h3_name = h3.text[:8]
 
             all_paragraphs = sec.find_all("p", recursive=False)
             p_content = []
@@ -270,7 +272,9 @@ async def parse_article(category, session):
                 parsed_article['article_paragraphs'] = []
             parsed_article['article_paragraphs'].append({
                 'name': name,
-                'content': p_content_str
+                'content': p_content_str,
+                'h2': h2_name,
+                'h3': h3_name
             })
         yield parsed_article
 
@@ -312,7 +316,9 @@ async def store_to_db(db_cfg, category, session, **kwargs):
                           sub_category TEXT, 
                           list_name TEXT, 
                           article_id TEXT NOT NULL, 
-                          article_name TEXT NOT NULL, 
+                          article_name TEXT NOT NULL,
+                          h2_name TEXT NOT NULL,
+                          h3_name TEXT NOT NULL, 
                           keywords TEXT,
                           content_id INTEGER NOT NULL, 
                           PRIMARY KEY (id),
@@ -333,13 +339,16 @@ async def store_to_db(db_cfg, category, session, **kwargs):
 
                         try:
                             add_article = f"INSERT INTO articles " \
-                                          f"(main_category, sub_category, list_name, article_id, article_name, keywords, content_id)" \
+                                          f"(main_category, sub_category, list_name, article_id, article_name, " \
+                                          f"h2_name, h3_name, keywords, content_id)" \
                                           f"VALUES (" \
                                           f"'{category['category_main']}', " \
                                           f"'{category['subcategory_name']}', " \
                                           f"'{articles_obj['list_name']}'," \
                                           f"'{articles_obj['article_id']}'," \
                                           f"'{articles_obj['title']}', " \
+                                          f"'{a['h2']}', " \
+                                          f"'{a['h3']}', " \
                                           f"'{articles_obj['keywords']}', " \
                                           f"{cur.lastrowid})"
 
@@ -369,12 +378,18 @@ async def bulk_crawl_and_store(db_cfg, categories, **kwargs):
 
 
 if __name__ == "__main__":
+    config = load_config()
+    if 'LOGGING' in config:
+        log_cfg = config['LOGGING']
+        if 'level' in log_cfg:
+            logger.setLevel(log_cfg['level'])
 
-    # Get Categories-URLs tree
+    if 'DATABASE' not in config:
+        raise Exception("Database configuration does not should. make sure your config json is correct")
+
     main_page = asyncio.run(get_page(ROOT_URL))
     categories = parse_categories(main_page)
 
-    config = load_config()
     start = time.perf_counter()
     asyncio.run(bulk_crawl_and_store(db_cfg=config['DATABASE'], categories=categories))
     duration = time.perf_counter() - start
