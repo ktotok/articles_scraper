@@ -251,11 +251,11 @@ async def parse_article(category, session):
             h2 = sec.find('h2', recursive=False)
 
             if h2:
-                h2_name = h2.text[:8]
+                h2_name = h2.text
 
             h3 = sec.find('h3', recursive=False)
             if h3:
-                h3_name = h3.text[:8]
+                h3_name = h3.text
 
             all_paragraphs = sec.find_all("p", recursive=False)
             p_content = []
