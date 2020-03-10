@@ -194,6 +194,7 @@ async def fetch_articles_page(category, session, **kwargs):
                     continue
 
                 article_id = re.search(r'p_artikkeli=(\w+)', article['article_href']).groups()[0]
+
                 yield {
                     'list_name': article['list_name'],
                     'article_id': article_id,
@@ -293,7 +294,6 @@ def load_config(filepath=DEFAULT_CONFIG_FILE_PATH):
 
 async def store_to_db(db_cfg, category, session, **kwargs):
     async for articles_obj in parse_article(category, session):
-
         async with aiomysql.create_pool(host=db_cfg['host'], port=db_cfg['port'],
                                         user=db_cfg['user'], password=db_cfg['password'],
                                         db=db_cfg['dbname'], echo=db_cfg['echo']) as pool:
@@ -301,8 +301,8 @@ async def store_to_db(db_cfg, category, session, **kwargs):
                 async with conn.cursor() as cur:
                     create_content_table = """
                         CREATE TABLE IF NOT EXISTS content (
-                          id INT AUTO_INCREMENT, 
-                          description TEXT, 
+                          id INT AUTO_INCREMENT,
+                          description TEXT,
                           text TEXT,
                           PRIMARY KEY (id)
                         ) ENGINE = InnoDB
@@ -311,16 +311,16 @@ async def store_to_db(db_cfg, category, session, **kwargs):
 
                     create_articles_table = """
                         CREATE TABLE IF NOT EXISTS articles (
-                          id INT AUTO_INCREMENT, 
-                          main_category TEXT NOT NULL, 
-                          sub_category TEXT, 
-                          list_name TEXT, 
-                          article_id TEXT NOT NULL, 
+                          id INT AUTO_INCREMENT,
+                          main_category TEXT NOT NULL,
+                          sub_category TEXT,
+                          list_name TEXT,
+                          article_id TEXT NOT NULL,
                           article_name TEXT NOT NULL,
                           h2_name TEXT NOT NULL,
-                          h3_name TEXT NOT NULL, 
+                          h3_name TEXT NOT NULL,
                           keywords TEXT,
-                          content_id INTEGER NOT NULL, 
+                          content_id INTEGER NOT NULL,
                           PRIMARY KEY (id),
                           FOREIGN KEY fk_content_id (content_id) REFERENCES content(id)
                         ) ENGINE = InnoDB
@@ -341,18 +341,20 @@ async def store_to_db(db_cfg, category, session, **kwargs):
                             add_article = f"INSERT INTO articles " \
                                           f"(main_category, sub_category, list_name, article_id, article_name, " \
                                           f"h2_name, h3_name, keywords, content_id)" \
-                                          f"VALUES (" \
-                                          f"'{category['category_main']}', " \
-                                          f"'{category['subcategory_name']}', " \
-                                          f"'{articles_obj['list_name']}'," \
-                                          f"'{articles_obj['article_id']}'," \
-                                          f"'{articles_obj['title']}', " \
-                                          f"'{a['h2']}', " \
-                                          f"'{a['h3']}', " \
-                                          f"'{articles_obj['keywords']}', " \
-                                          f"{cur.lastrowid})"
+                                          f"VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
+                            add_article_values = [
+                                          category['category_main'],
+                                          category['subcategory_name'],
+                                          articles_obj['list_name'],
+                                          articles_obj['article_id'],
+                                          articles_obj['title'],
+                                          a['h2'],
+                                          a['h3'],
+                                          articles_obj['keywords'],
+                                          cur.lastrowid
+                            ]
 
-                            await cur.execute(add_article)
+                            await cur.execute(add_article, add_article_values)
                             await conn.commit()
                         except Exception as ex:
                             logger.exception(f"Failed to add article meta: {ex}. \n{add_article}")
