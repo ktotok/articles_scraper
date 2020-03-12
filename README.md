@@ -33,3 +33,6 @@ CREATE TABLE IF NOT EXISTS content (
                           PRIMARY KEY (id),
                           FOREIGN KEY fk_content_id (content_id) REFERENCES content(id)
                         ) ENGINE = InnoDB
+
+![Image of web page]
+(https://share.getcloudapp.com/RBudyvvd)
